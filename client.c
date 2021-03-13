@@ -89,25 +89,38 @@ int main() {
 
 			//Set connection flag because other commands should require connection first
 			connectflag = 1;
-			printf("testing connect\n");
 
 
 		}
 
+		//List command
 		else if(!(strcmp(command, "list\n"))) {
 			printf("testing list\n");
 		}
+
+		//Retrieve command
 		else if(!(strcmp(command, "retrieve"))) {
 			printf("testing retrieve\n");
 		}
+
+		//Store command
 		else if(!(strcmp(command, "store"))) {
 			printf("testing store\n");
 		}
+
+		//Quit command
 		else if(!(strcmp(command, "quit\n"))) {
-			printf("testing quit\n");	
-			//close connection
+			
 			quitflag = 1;
+			printf("Closing socket and quitting...\n");
+
+			//Close socket connection
+			if(connectflag) {
+				shutdown(sockfd, SHUT_RDWR);
+			}
+
 		}
+		//User entered command incorrectly or non-existent command
 		else {
 			if(!(strcmp(command, "connect\n"))) {
 				printf("Connect command requires arguments (e.g., CONNECT <ipaddr> <port number>)\n");
