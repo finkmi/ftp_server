@@ -30,7 +30,8 @@ int main() {
 
 	while(!quitflag) {
 		
-		//Clear buffer
+		//Reset buffer to default size and clear buffer
+		buffer = (char *) realloc(buffer, BUFFER_SIZE);
 		bzero(buffer, BUFFER_SIZE);
 
 		//Print prompt and read in user input checking for fgets error
@@ -96,12 +97,33 @@ int main() {
 		//List command
 		else if(!(strcmp(command, "list\n"))) {
 			
+			//Write command to server
 			n = write(sockfd, "list", 5);
 			if (n < 0) {
 				printf("Error sending list command\n");
 				continue;
 			}
-			printf("testing list\n");
+
+			//Read response length from server
+			char* response_len = (char *) malloc(32);
+			n = read(sockfd, response_len, 5);
+		       	if (n < 0) {
+				printf("Error reading from socket\n");
+				continue;
+			}
+		
+			//Read file names and print ensuring that all bytes sent by server are read
+			buffer = (char *) realloc(buffer, atoi(response_len));
+			n = read(sockfd, buffer, atoi(response_len));
+		       	if (n < 0) {
+				printf("Error reading from socket\n");
+				continue;
+			}
+			else if (n != atoi(response_len)) {
+				printf("Did not receive entire message from server -- %d of %d bytes\n", n, atoi(response_len));
+			}	
+			printf("--LIST--\n%s\n", buffer);	
+			free(response_len);
 		}
 
 		//Retrieve command

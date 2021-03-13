@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #define BUFFER_SIZE 4096
 
@@ -15,7 +16,6 @@ void error(char *msg) {
     perror(msg);
     exit(1);
 }
-
 
 int main(int argc, char *argv[]) {
 
@@ -58,21 +58,58 @@ int main(int argc, char *argv[]) {
      printf("Connected to client\n");
 
      while(!quitflag) {
-	     bzero(buffer,1024);
+
+	     //Reset buffer to default size and clear buffer
+	     buffer = (char *) realloc(buffer, BUFFER_SIZE);
+	     bzero(buffer, BUFFER_SIZE);
+
+	     //Read command sent from client checking for error
 	     n = read(newsockfd, buffer, BUFFER_SIZE - 1);
-	     
 	     if (n < 0) {
 		    error("ERROR reading from socket");
 	     }
 
 	     printf("Received message from client: %s\n",buffer);
-	     printf("Enter response: ");
-	     bzero(buffer, 1024);
-	     fgets(buffer,1024,stdin);
-	     n = write(newsockfd,buffer,strlen(buffer));
 
-	     if (n < 0) {
-		     error("ERROR writing to socket");
+	     //List command received
+	     if(!(strcmp(buffer, "list"))) {
+
+		     //Clear buffer
+		     bzero(buffer, strlen(buffer));
+
+		     char *tmp;
+		     tmp = (char *) malloc(BUFFER_SIZE);
+		     DIR *d;
+  		     struct dirent *dir;
+
+		     //Open directory and read through filenames
+		     d = opendir(".");
+  		     if (d) {
+			     //Copy file name to tmp, realloc buffer size to fit, strcat to end of buffer
+   			     while ((dir = readdir(d)) != NULL) {
+				     strcpy(tmp, dir->d_name);
+				     buffer = (char *) realloc(buffer, strlen(buffer) + strlen(tmp) + 1);
+				     strcat(buffer, tmp);
+				     strcat(buffer, "\n");
+			     }
+			     closedir(d);
+		     }
+
+		     //Send length of string to error check on client side
+		     char *response_len = (char *) malloc(32); 
+		     sprintf(response_len, "%lu", strlen(buffer));
+		     n = write(newsockfd, response_len, strlen(response_len));
+		     if(n < 0) {
+			     error("Error writing to socket");
+		     }
+
+		     //Send list of filenames
+		     n = write(newsockfd, buffer, strlen(buffer));
+		     if(n < 0) {
+			     error("Error writing to socket");
+		     }
+
+		     free(response_len);
 	     }
      }
 
