@@ -16,14 +16,15 @@ int connectflag = 0;
 int main() {
 
 	//used to read in and parse user commands
-	char buffer[BUFFER_SIZE];
-	char *command;
+	//char buffer[BUFFER_SIZE];
+	char *buffer, *command;
+	buffer = (char *) malloc(BUFFER_SIZE);
 	
 	//used for connecting socket
 	struct sockaddr_in serv_addr;
     	struct hostent *server;
 	char *ip, *tempno;
-	int sockfd, portno;
+	int sockfd, portno, n;
 
 	printf("Client starting...\n");
 
@@ -56,11 +57,11 @@ int main() {
 		if(!(strcmp(command, "connect"))) {
 			
 			//Get ip and port number from user input checking for errors
-			if((ip = strtok(buffer, " ")) == NULL) {
+			if((ip = strtok(NULL, " ")) == NULL) {
 				printf("Error tokenizing server ip please enter -> CONNECT <ip/name> <server port>\n");
 				continue;
 			}
-			if((tempno = strtok(buffer, " ")) == NULL) {
+			if((tempno = strtok(NULL, " ")) == NULL) {
 				printf("Error tokenizing port number please enter -> CONNECT <ip/name> <server port>\n");
 				continue;
 			}
@@ -89,12 +90,17 @@ int main() {
 
 			//Set connection flag because other commands should require connection first
 			connectflag = 1;
-
-
+			printf("Connected to %s:%d\n", ip, portno);
 		}
 
 		//List command
 		else if(!(strcmp(command, "list\n"))) {
+			
+			n = write(sockfd, "list", 5);
+			if (n < 0) {
+				printf("Error sending list command\n");
+				continue;
+			}
 			printf("testing list\n");
 		}
 
@@ -137,6 +143,7 @@ int main() {
 		}
 	}
 
+	free(buffer);
 
 	return 0;
 }
