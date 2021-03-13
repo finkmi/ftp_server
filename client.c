@@ -11,6 +11,7 @@
 #define BUFFER_SIZE 4096
 
 int quitflag = 0;
+int connectflag = 0;
 
 int main() {
 
@@ -28,6 +29,9 @@ int main() {
 
 	while(!quitflag) {
 		
+		//Clear buffer
+		bzero(buffer, BUFFER_SIZE);
+
 		//Print prompt and read in user input checking for fgets error
 		printf(">");
 		if(fgets(buffer, BUFFER_SIZE, stdin) < 0) {
@@ -78,13 +82,13 @@ int main() {
     			bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
    			serv_addr.sin_port = htons(portno);
 
-			printf("here\n");
-
 			if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) {
        				printf("Error connecting socket\n");
 				continue;
 			}
 
+			//Set connection flag because other commands should require connection first
+			connectflag = 1;
 			printf("testing connect\n");
 
 
@@ -105,9 +109,18 @@ int main() {
 			quitflag = 1;
 		}
 		else {
-			//NOTE: I think that newline char only goes on list and quit as they have no other arg
-			//needs more testing
-			printf("Command not recognized please be sure to enter in command correctly\n");
+			if(!(strcmp(command, "connect\n"))) {
+				printf("Connect command requires arguments (e.g., CONNECT <ipaddr> <port number>)\n");
+			}
+			else if(!(strcmp(command, "retrieve\n"))) {
+				printf("Retrieve command requires arguments (e.g., RETRIEVE <filename>)\n");
+			}
+			else if(!(strcmp(command, "store\n"))) {
+				printf("Store command requires arguments (e.g., STORE <filename>)\n");
+			}
+			else {
+				printf("Command not recognized please be sure to enter in command correctly\n");
+			}
 		}
 	}
 
