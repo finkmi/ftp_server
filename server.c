@@ -111,6 +111,25 @@ int main(int argc, char *argv[]) {
 
 		     free(response_len);
 	     }
+
+	     else if(!(strcmp(buffer, "retrieve"))) {
+
+	     }
+
+	     else if(!(strcmp(buffer, "store"))) {
+
+	     }
+
+	     else if(!(strcmp(buffer, "quit"))) {
+
+		     quitflag = 1;
+		     printf("Closing socket and quitting...\n");
+
+		     //Close socket connection
+		     shutdown(sockfd, SHUT_RDWR);
+	     }
+
+
      }
 
      free(buffer);

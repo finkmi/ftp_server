@@ -142,6 +142,13 @@ int main() {
 			quitflag = 1;
 			printf("Closing socket and quitting...\n");
 
+			//Write command to server
+			n = write(sockfd, "quit", 5);
+			if (n < 0) {
+				printf("Error sending quit command\n");
+				continue;
+			}
+
 			//Close socket connection
 			if(connectflag) {
 				shutdown(sockfd, SHUT_RDWR);
