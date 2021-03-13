@@ -114,10 +114,12 @@ int main(int argc, char *argv[]) {
 
 	     else if(!(strcmp(buffer, "retrieve"))) {
 
+		     printf("got retrieve command\n");
 	     }
 
 	     else if(!(strcmp(buffer, "store"))) {
 
+		     printf("got store command\n");
 	     }
 
 	     else if(!(strcmp(buffer, "quit"))) {
