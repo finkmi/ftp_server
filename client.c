@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
@@ -7,11 +8,90 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <libgen.h>
 
 #define BUFFER_SIZE 4096
 
 int quitflag = 0;
 int connectflag = 0;
+
+void send_file(char *path, int sockfd) {
+
+	char buffer[BUFFER_SIZE];
+	FILE *fp;
+	int n;
+	struct stat sb;
+	
+	//Open file pointer
+	if((fp = fopen(path, "r")) == NULL) {
+		printf("Error opening file pointer\n");
+		return;
+	}
+
+	//Get file stats
+	if (stat(path, &sb) == -1) {
+        	printf("Error getting file stats\n");
+		return;
+    	}
+
+	//Send filesize
+	sprintf(buffer, "%lld", sb.st_size);
+	if((n = write(sockfd, buffer, strlen(buffer))) < 0) {
+		printf("Error writing file size to socket\n");
+		return;
+	}
+
+	//Send filename
+	if((n = write(sockfd, basename(path), strlen(basename(path)))) < 0) {
+		printf("Error writing filename to socket\n");
+		return;
+	}
+
+	//Loop through file sending BUFFER_SIZE bytes, zeroing buffer and repeating until all bytes sent
+	while(fgets(buffer, BUFFER_SIZE, fp) != NULL) {
+
+		if((n = write(sockfd, buffer, strlen(buffer))) < 0) {
+			printf("Error writing file data to socket\n");
+			return;
+		}
+		bzero(buffer, BUFFER_SIZE);
+	}
+	return;
+}
+
+void recv_file(int sockfd) {
+
+	char buffer[BUFFER_SIZE];
+	FILE *fp;
+	int n, num_bytes, count = 0;
+
+	//Read filesize
+	if((n = read(sockfd, buffer, BUFFER_SIZE - 1)) < 0) {
+		printf("Error reading from socket\n");
+		return;
+	}
+	num_bytes = atoi(buffer);
+
+	//Read filename and open a file pointer
+	if((n = read(sockfd, buffer, BUFFER_SIZE - 1)) < 0) {
+		printf("Error reading from socket\n");
+		return;
+	}
+	fp = fopen(buffer, "w");
+
+	//Loop until num_bytes have been read and write them to the file
+	while(count < num_bytes) {
+
+		if((n = read(sockfd, buffer, BUFFER_SIZE - 1)) < 0) {
+			printf("Error reading from socket\n");
+			return;
+		}
+		fprintf(fp, "%s", buffer);
+		bzero(buffer, BUFFER_SIZE);
+		count += n;
+	}
+	return;
+}
 
 int main() {
 
@@ -23,7 +103,7 @@ int main() {
 	//used for connecting socket
 	struct sockaddr_in serv_addr;
     	struct hostent *server;
-	char *ip, *tempno;
+	char *ip, *tempno, *filename;
 	int sockfd, portno, n;
 
 	printf("Client starting...\n");
@@ -133,7 +213,22 @@ int main() {
 
 		//Store command
 		else if(!(strcmp(command, "store"))) {
-			printf("testing store\n");
+		
+			//Write command to server
+			n = write(sockfd, "store", 6);
+			if (n < 0) {
+				printf("Error sending store command\n");
+				continue;
+			}
+
+			//Get filename from user input checking for errors
+			if((filename = strtok(NULL, "\n")) == NULL) {
+				printf("Error tokenizing filename please enter -> STORE <filename>\n");
+				continue;
+			}
+
+			send_file(filename, sockfd);
+
 		}
 
 		//Quit command

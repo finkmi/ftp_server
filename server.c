@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <sys/types.h> 
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <libgen.h>
 
 #define BUFFER_SIZE 4096
 
@@ -16,6 +18,82 @@ void error(char *msg) {
     perror(msg);
     exit(1);
 }
+
+void send_file(char *filename, int sockfd) {
+
+	char buffer[BUFFER_SIZE];
+	FILE *fp = fopen(filename, "r");
+	int n;
+	struct stat sb;
+
+	//Get file stats
+	if (stat(filename, &sb) == -1) {
+        	printf("Error getting file stats\n");
+		return;
+    	}
+
+	//Send filesize
+	sprintf(buffer, "%lld", sb.st_size);
+	if((n = write(sockfd, buffer, strlen(buffer))) < 0) {
+		printf("Error writing to socket\n");
+		return;
+	}
+
+	//Send filename
+	if((n = write(sockfd, filename, strlen(filename))) < 0) {
+		printf("Error writing to socket\n");
+		return;
+	}
+
+	//Loop through file sending BUFFER_SIZE bytes, zeroing buffer and repeating until all bytes sent
+	while(fgets(buffer, BUFFER_SIZE, fp) != NULL) {
+
+		if((n = write(sockfd, buffer, strlen(buffer))) < 0) {
+			printf("Error writing to socket\n");
+			return;
+		}
+		bzero(buffer, BUFFER_SIZE);
+	}
+	return;
+}
+
+
+void recv_file(int sockfd) {
+
+	char buffer[BUFFER_SIZE];
+	FILE *fp;
+	int n, num_bytes, count = 0;
+
+	//Read filesize
+	if((n = read(sockfd, buffer, BUFFER_SIZE - 1)) < 0) {
+		printf("Error reading from socket\n");
+		return;
+	}
+	num_bytes = atoi(buffer);
+
+	//Read filename and open a file pointer
+	if((n = read(sockfd, buffer, BUFFER_SIZE - 1)) < 0) {
+		printf("Error reading from socket\n");
+		return;
+	}
+	fp = fopen(buffer, "w");
+
+	//Loop until num_bytes have been read and write them to the file
+	while(count < num_bytes) {
+
+		if((n = read(sockfd, buffer, BUFFER_SIZE - 1)) < 0) {
+			printf("Error reading from socket\n");
+			return;
+		}
+		printf("Count == %d  --  READ (%d bytes): %s\n", count, n, buffer);
+		fprintf(fp, "%s", buffer);
+		bzero(buffer, BUFFER_SIZE);
+		count += n;
+	}
+	fclose(fp);
+	return;
+}
+
 
 int main(int argc, char *argv[]) {
 
@@ -74,17 +152,19 @@ int main(int argc, char *argv[]) {
 	     //List command received
 	     if(!(strcmp(buffer, "list"))) {
 
-		     //Clear buffer
+		     //Clear buffer to get rid of command
 		     bzero(buffer, strlen(buffer));
 
+		     //Create temporary string for appending filenames to buffer one at a time
 		     char *tmp;
 		     tmp = (char *) malloc(BUFFER_SIZE);
-		     DIR *d;
+		     DIR *d;				
   		     struct dirent *dir;
 
-		     //Open directory and read through filenames
+		     //Open current directory and read through filenames
 		     d = opendir(".");
   		     if (d) {
+
 			     //Copy file name to tmp, realloc buffer size to fit, strcat to end of buffer
    			     while ((dir = readdir(d)) != NULL) {
 				     strcpy(tmp, dir->d_name);
@@ -118,6 +198,11 @@ int main(int argc, char *argv[]) {
 	     }
 
 	     else if(!(strcmp(buffer, "store"))) {
+
+		     //Clear buffer to get rid of command
+		     bzero(buffer, strlen(buffer));
+
+		     recv_file(newsockfd);
 
 		     printf("got store command\n");
 	     }
