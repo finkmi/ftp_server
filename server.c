@@ -19,15 +19,21 @@ void error(char *msg) {
     exit(1);
 }
 
-void send_file(char *filename, int sockfd) {
+void send_file(char *path, int sockfd) {
 
 	char buffer[BUFFER_SIZE];
-	FILE *fp = fopen(filename, "r");
+	FILE *fp;
 	int n;
 	struct stat sb;
+	
+	//Open file pointer
+	if((fp = fopen(path, "r")) == NULL) {
+		printf("Error opening file pointer\n");
+		return;
+	}
 
 	//Get file stats
-	if (stat(filename, &sb) == -1) {
+	if (stat(path, &sb) == -1) {
         	printf("Error getting file stats\n");
 		return;
     	}
@@ -35,13 +41,13 @@ void send_file(char *filename, int sockfd) {
 	//Send filesize
 	sprintf(buffer, "%lld", sb.st_size);
 	if((n = write(sockfd, buffer, strlen(buffer))) < 0) {
-		printf("Error writing to socket\n");
+		printf("Error writing file size to socket\n");
 		return;
 	}
 
 	//Send filename
-	if((n = write(sockfd, filename, strlen(filename))) < 0) {
-		printf("Error writing to socket\n");
+	if((n = write(sockfd, basename(path), strlen(basename(path)))) < 0) {
+		printf("Error writing filename to socket\n");
 		return;
 	}
 
@@ -49,7 +55,7 @@ void send_file(char *filename, int sockfd) {
 	while(fgets(buffer, BUFFER_SIZE, fp) != NULL) {
 
 		if((n = write(sockfd, buffer, strlen(buffer))) < 0) {
-			printf("Error writing to socket\n");
+			printf("Error writing file data to socket\n");
 			return;
 		}
 		bzero(buffer, BUFFER_SIZE);
@@ -85,7 +91,6 @@ void recv_file(int sockfd) {
 			printf("Error reading from socket\n");
 			return;
 		}
-		printf("Count == %d  --  READ (%d bytes): %s\n", count, n, buffer);
 		fprintf(fp, "%s", buffer);
 		bzero(buffer, BUFFER_SIZE);
 		count += n;
@@ -98,7 +103,7 @@ void recv_file(int sockfd) {
 int main(int argc, char *argv[]) {
 
      int sockfd, newsockfd, portno, clilen;
-     char *buffer;
+     char *buffer;//, *filename;
      buffer = (char *) malloc(BUFFER_SIZE);
      struct sockaddr_in serv_addr, cli_addr;
      int n;
@@ -194,7 +199,16 @@ int main(int argc, char *argv[]) {
 
 	     else if(!(strcmp(buffer, "retrieve"))) {
 
-		     printf("got retrieve command\n");
+		     //Clear buffer to get rid of command
+		     bzero(buffer, strlen(buffer));
+
+		     //Read file name sent from client checking for error
+	    	     n = read(newsockfd, buffer, BUFFER_SIZE - 1);
+	     	     if (n < 0) {
+		    	     error("ERROR reading from socket");
+	     	     }
+
+		     send_file(buffer, newsockfd);
 	     }
 
 	     else if(!(strcmp(buffer, "store"))) {

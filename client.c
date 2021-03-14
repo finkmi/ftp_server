@@ -90,9 +90,9 @@ void recv_file(int sockfd) {
 		bzero(buffer, BUFFER_SIZE);
 		count += n;
 	}
+	fclose(fp);
 	return;
 }
-
 int main() {
 
 	//used to read in and parse user commands
@@ -177,6 +177,11 @@ int main() {
 		//List command
 		else if(!(strcmp(command, "list\n"))) {
 			
+			if(!connectflag) {
+				printf("Please connect to server first with connect command\n");
+				continue;
+			}
+
 			//Write command to server
 			n = write(sockfd, "list", 5);
 			if (n < 0) {
@@ -208,12 +213,46 @@ int main() {
 
 		//Retrieve command
 		else if(!(strcmp(command, "retrieve"))) {
-			printf("testing retrieve\n");
+			
+			if(!connectflag) {
+				printf("Please connect to server first with connect command\n");
+				continue;
+			}
+
+			//Write command to server
+			n = write(sockfd, "retrieve", 9);
+			if (n < 0) {
+				printf("Error sending retrieve command\n");
+				continue;
+			}
+
+			//Get filename from user input checking for errors
+			if((filename = strtok(NULL, "\n")) == NULL) {
+				printf("Error tokenizing filename please enter -> RETRIEVE <filename>\n");
+				continue;
+			}
+
+			//Write desired filename to server
+			n = write(sockfd, filename, strlen(filename));
+			if (n < 0) {
+				printf("Error sending file name\n");
+				continue;
+			}
+
+			//Clear buffer to get rid of command
+		        bzero(buffer, strlen(buffer));
+
+		        recv_file(sockfd);
 		}
 
 		//Store command
 		else if(!(strcmp(command, "store"))) {
 		
+			if(!connectflag) {
+				printf("Please connect to server first with connect command\n");
+				continue;
+			}
+
 			//Write command to server
 			n = write(sockfd, "store", 6);
 			if (n < 0) {
