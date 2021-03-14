@@ -103,7 +103,7 @@ void recv_file(int sockfd) {
 int main(int argc, char *argv[]) {
 
      int sockfd, newsockfd, portno, clilen;
-     char *buffer;//, *filename;
+     char *buffer;
      buffer = (char *) malloc(BUFFER_SIZE);
      struct sockaddr_in serv_addr, cli_addr;
      int n;
@@ -112,6 +112,8 @@ int main(int argc, char *argv[]) {
          fprintf(stderr,"ERROR, no port provided\n");
          exit(1);
      }
+
+     printf("Waiting for connection...\n");
 
      //Create socket
      sockfd = socket(AF_INET, SOCK_STREAM, 0);
